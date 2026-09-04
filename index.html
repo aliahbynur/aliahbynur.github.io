@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fabulinus Document Generator</title>
+  <meta name="description" content="Create official Fabulinus notices, agendas, minutes and attendance sheets." />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="app-header">
+      <div>
+        <div class="eyebrow">Department of English · Aliah University · Park Circus Campus</div>
+        <h1>Fabulinus</h1>
+        <p>Drama Club Document Generator</p>
+      </div>
+      <div class="header-actions">
+        <button class="ghost-btn" id="resetBtn" type="button">Reset</button>
+        <button class="primary-btn" id="printBtn" type="button">Print / Save PDF</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <section class="left-panel">
+        <div class="mode-grid" role="tablist" aria-label="Document type">
+          <button class="mode-card active" data-mode="notice" role="tab">
+            <span class="mode-icon">📄</span>
+            <span>Notice</span>
+            <small>Official announcement</small>
+          </button>
+          <button class="mode-card" data-mode="agenda" role="tab">
+            <span class="mode-icon">📋</span>
+            <span>Agenda</span>
+            <small>Meeting discussion points</small>
+          </button>
+          <button class="mode-card" data-mode="minutes" role="tab">
+            <span class="mode-icon">📝</span>
+            <span>Minutes of Meeting</span>
+            <small>Record decisions & discussion</small>
+          </button>
+          <button class="mode-card" data-mode="attendance" role="tab">
+            <span class="mode-icon">👥</span>
+            <span>Attendance Sheet</span>
+            <small>Participant signatures</small>
+          </button>
+        </div>
+
+        <div class="form-panel">
+          <div class="panel-heading">
+            <div>
+              <div class="eyebrow">Editor</div>
+              <h2 id="formTitle">Create Notice</h2>
+            </div>
+            <span class="live-badge">Live preview</span>
+          </div>
+
+          <div id="formContent"></div>
+        </div>
+      </section>
+
+      <section class="preview-panel">
+        <div class="preview-toolbar">
+          <div>
+            <div class="eyebrow">Preview</div>
+            <strong>A4 · Portrait</strong>
+          </div>
+          <span class="status-dot">Ready</span>
+        </div>
+        <div class="paper-wrap">
+          <div id="paper" class="paper"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <template id="noticeFormTemplate">
+    <div class="field-grid two">
+      <label class="field"><span>Date</span><input name="date" type="date" /></label>
+      <label class="field"><span>Notice No.</span><input name="noticeNo" placeholder="e.g. FAB/01/2026" /></label>
+    </div>
+    <label class="field"><span>Subject</span><input name="subject" placeholder="Meeting regarding the revival and functioning of Fabulinus" /></label>
+    <label class="field"><span>Notice Body</span><textarea name="body" rows="10" placeholder="Type the full notice here..."></textarea></label>
+  </template>
+
+  <template id="agendaFormTemplate">
+    <div class="field-grid two">
+      <label class="field"><span>Date</span><input name="date" type="date" /></label>
+      <label class="field"><span>Time</span><input name="time" placeholder="e.g. 2:00 PM" /></label>
+    </div>
+    <label class="field"><span>Venue</span><input name="venue" placeholder="e.g. Department Auditorium" /></label>
+    <label class="field"><span>Meeting / Event</span><input name="meeting" placeholder="e.g. Drama Club Revival Meeting" /></label>
+    <div class="repeat-header"><span>Agenda Points</span><button class="small-btn" id="addAgenda" type="button">+ Add item</button></div>
+    <div id="agendaItems" class="repeat-list"></div>
+  </template>
+
+  <template id="minutesFormTemplate">
+    <div class="field-grid two">
+      <label class="field"><span>Date</span><input name="date" type="date" /></label>
+      <label class="field"><span>Time</span><input name="time" placeholder="e.g. 2:00 PM" /></label>
+    </div>
+    <label class="field"><span>Venue</span><input name="venue" placeholder="e.g. Department Auditorium" /></label>
+    <label class="field"><span>Meeting / Event</span><input name="meeting" placeholder="e.g. Drama Club Revival Meeting" /></label>
+    <label class="field"><span>Members Present</span><textarea name="members" rows="4" placeholder="One name per line"></textarea></label>
+    <label class="field"><span>Discussion</span><textarea name="discussion" rows="6" placeholder="Record the discussion points..."></textarea></label>
+    <label class="field"><span>Decisions / Resolutions</span><textarea name="decisions" rows="6" placeholder="Record decisions and resolutions..."></textarea></label>
+    <label class="field"><span>Action Items</span><textarea name="actions" rows="5" placeholder="Record assigned actions and responsibilities..."></textarea></label>
+  </template>
+
+  <template id="attendanceFormTemplate">
+    <div class="field-grid two">
+      <label class="field"><span>Date</span><input name="date" type="date" /></label>
+      <label class="field"><span>Meeting / Event</span><input name="meeting" placeholder="e.g. Drama Club Revival Meeting" /></label>
+    </div>
+    <label class="field"><span>Time</span><input name="time" placeholder="e.g. 2:00 PM" /></label>
+    <div class="repeat-header"><span>Participants</span><button class="small-btn" id="addParticipant" type="button">+ Add participant</button></div>
+    <div id="participantItems" class="repeat-list"></div>
+  </template>
+
+  <script src="script.js"></script>
+</body>
+</html>
