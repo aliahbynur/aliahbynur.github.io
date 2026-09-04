@@ -1,4 +1,3 @@
-from pathlib import Path
 
 code = r"""const state={mode:'notice',data:{notice:{date:'',noticeNo:'',subject:'',body:''},agenda:{date:'',time:'',venue:'',meeting:'',items:['']},minutes:{date:'',time:'',venue:'',meeting:'',members:'',discussion:'',decisions:'',actions:''},attendance:{date:'',meeting:'',time:'',participants:[{name:'',year:''}]}}};
 const titles={notice:'Create Notice',agenda:'Create Agenda',minutes:'Create Minutes',attendance:'Create Attendance Sheet'};
