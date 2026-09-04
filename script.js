@@ -1,131 +1,46 @@
-const state = {
-  mode: 'notice',
-  data: {
-    notice: { date: '', noticeNo: '', subject: '', body: '' },
-    agenda: { date: '', time: '', venue: '', meeting: '', items: [''] },
-    minutes: { date: '', time: '', venue: '', meeting: '', members: '', discussion: '', decisions: '', actions: '' },
-    attendance: { date: '', meeting: '', time: '', participants: [{ name: '', year: '' }] }
-  }
-};
-
-const titles = { notice:'Create Notice', agenda:'Create Agenda', minutes:'Create Minutes', attendance:'Create Attendance Sheet' };
-const paperTitles = { notice:'NOTICE', agenda:'AGENDA', minutes:'MINUTES OF MEETING', attendance:'ATTENDANCE SHEET' };
-const formContent = document.getElementById('formContent');
-const formTitle = document.getElementById('formTitle');
-const paper = document.getElementById('paper');
-
-function escapeHTML(value = '') {
-  return String(value).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+const state={mode:'notice',data:{notice:{date:'',noticeNo:'',subject:'',body:''},agenda:{date:'',time:'',venue:'',meeting:'',items:['']},minutes:{date:'',time:'',venue:'',meeting:'',members:'',discussion:'',decisions:'',actions:''},attendance:{date:'',meeting:'',time:'',participants:[{name:'',year:''}]}}};
+const titles={notice:'Create Notice',agenda:'Create Agenda',minutes:'Create Minutes',attendance:'Create Attendance Sheet'};
+const paperTitles={notice:'NOTICE',agenda:'AGENDA',minutes:'MINUTES OF MEETING',attendance:'ATTENDANCE SHEET'};
+const formContent=document.getElementById('formContent');const formTitle=document.getElementById('formTitle');const paper=document.getElementById('paper');
+function escapeHTML(value=''){return String(value).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
+function markdown(value=''){
+ let source=String(value).replace(/\r\n?/g,'\n');
+ let lines=source.split('\n');let html='';let listType=null;
+ const inline=s=>escapeHTML(s)
+   .replace(/`([^`]+)`/g,'<code>$1</code>')
+   .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+   .replace(/__(.+?)__/g,'<strong>$1</strong>')
+   .replace(/\*([^*\n]+)\*/g,'<em>$1</em>')
+   .replace(/_([^_\n]+)_/g,'<em>$1</em>');
+ const closeList=()=>{if(listType){html+=`</${listType}>`;listType=null;}};
+ for(let line of lines){
+   if(/^\s*$/.test(line)){closeList();html+='<div class="md-spacer"></div>';continue;}
+   let m=line.match(/^\s*[-*]\s+(.+)$/);if(m){if(listType!=='ul'){closeList();html+='<ul>';listType='ul';}html+=`<li>${inline(m[1])}</li>`;continue;}
+   m=line.match(/^\s*\d+[.)]\s+(.+)$/);if(m){if(listType!=='ol'){closeList();html+='<ol>';listType='ol';}html+=`<li>${inline(m[1])}</li>`;continue;}
+   m=line.match(/^\s*(#{1,3})\s+(.+)$/);if(m){closeList();const level=Math.min(3,m[1].length);html+=`<h${level}>${inline(m[2])}</h${level}>`;continue;}
+   m=line.match(/^\s*>\s+(.+)$/);if(m){closeList();html+=`<blockquote>${inline(m[1])}</blockquote>`;continue;}
+   closeList();html+=`<p>${inline(line)}</p>`;
+ }
+ closeList();return html;
 }
-
-// Lightweight Markdown renderer for safe document formatting.
-function markdown(value = '') {
-  let html = escapeHTML(value);
-  html = html.replace(/^###\s+(.+)$/gm, '<h4>$1</h4>');
-  html = html.replace(/^##\s+(.+)$/gm, '<h3>$1</h3>');
-  html = html.replace(/^#\s+(.+)$/gm, '<h3>$1</h3>');
-  html = html.replace(/^>\s+(.+)$/gm, '<blockquote>$1</blockquote>');
-  html = html.replace(/^\s*[-*]\s+(.+)$/gm, '<li>$1</li>');
-  html = html.replace(/(<li>.*<\/li>\n?)+/g, m => `<ul>${m}</ul>`);
-  html = html.replace(/^(\d+)\.\s+(.+)$/gm, '<li>$2</li>');
-  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
-  html = html.replace(/__(.+?)__/g, '<strong>$1</strong>');
-  html = html.replace(/\*([^*\n]+)\*/g, '<em>$1</em>');
-  html = html.replace(/_([^_\n]+)_/g, '<em>$1</em>');
-  return html.replace(/\n/g, '<br>');
-}
-
-function formatDate(value) {
-  if (!value) return '__________________';
-  const d = new Date(`${value}T00:00:00`);
-  return d.toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' });
-}
-
-function templateFor(mode) {
-  const template = document.getElementById(`${mode}FormTemplate`);
-  return template.content.cloneNode(true);
-}
-
-function addMarkdownToolbar(textarea) {
-  if (!textarea || textarea.dataset.markdownReady) return;
-  textarea.dataset.markdownReady = '1';
-  const toolbar = document.createElement('div');
-  toolbar.className = 'markdown-toolbar';
-  toolbar.innerHTML = '<button type="button" data-md="bold"><b>B</b></button><button type="button" data-md="italic"><i>I</i></button><button type="button" data-md="bullet">• List</button><button type="button" data-md="number">1. List</button><button type="button" data-md="quote">Quote</button><button type="button" data-md="heading">Heading</button>';
-  textarea.parentNode.insertBefore(toolbar, textarea);
-  toolbar.querySelectorAll('[data-md]').forEach(btn => btn.addEventListener('click', () => applyMarkdown(textarea, btn.dataset.md)));
-}
-
-function applyMarkdown(textarea, type) {
-  const start = textarea.selectionStart;
-  const end = textarea.selectionEnd;
-  const selected = textarea.value.slice(start, end) || 'text';
-  const wrappers = { bold:['**','**'], italic:['*','*'], bullet:['- ',''], number:['1. ',''], quote:['> ',''], heading:['### ',''] };
-  const [before, after] = wrappers[type];
-  textarea.setRangeText(before + selected + after, start, end, 'select');
-  textarea.dispatchEvent(new Event('input', { bubbles:true }));
-  textarea.focus();
-}
-
-function bindInputs() {
-  formContent.querySelectorAll('input[name], textarea[name]').forEach(input => {
-    if (input.tagName === 'TEXTAREA') addMarkdownToolbar(input);
-    input.addEventListener('input', () => {
-      state.data[state.mode][input.name] = input.value;
-      renderPaper();
-    });
-  });
-}
-
-function renderForm() {
-  formContent.innerHTML = '';
-  formContent.appendChild(templateFor(state.mode));
-  formTitle.textContent = titles[state.mode];
-  if (state.mode === 'agenda') renderAgendaItems();
-  if (state.mode === 'attendance') renderParticipants();
-  const data = state.data[state.mode];
-  formContent.querySelectorAll('input[name], textarea[name]').forEach(input => {
-    if (input.type === 'date') input.value = data[input.name] || '';
-    else if (input.name in data && typeof data[input.name] === 'string') input.value = data[input.name];
-  });
-  bindInputs();
-  const addAgenda = document.getElementById('addAgenda');
-  if (addAgenda) addAgenda.addEventListener('click', () => { state.data.agenda.items.push(''); renderAgendaItems(); renderPaper(); });
-  const addParticipant = document.getElementById('addParticipant');
-  if (addParticipant) addParticipant.addEventListener('click', () => { state.data.attendance.participants.push({name:'',year:''}); renderParticipants(); renderPaper(); });
-}
-
-function renderAgendaItems() {
-  const list = document.getElementById('agendaItems'); if (!list) return;
-  list.innerHTML = state.data.agenda.items.map((item,i) => `<div class="repeat-row"><div class="number">${i+1}</div><input data-agenda-index="${i}" value="${escapeHTML(item)}" placeholder="Agenda item ${i+1}" /><button class="remove-btn" type="button" data-remove-agenda="${i}" aria-label="Remove item">×</button></div>`).join('');
-  list.querySelectorAll('[data-agenda-index]').forEach(input => input.addEventListener('input', e => { state.data.agenda.items[Number(e.target.dataset.agendaIndex)] = e.target.value; renderPaper(); }));
-  list.querySelectorAll('[data-remove-agenda]').forEach(button => button.addEventListener('click', e => { const i=Number(e.currentTarget.dataset.removeAgenda); if(state.data.agenda.items.length===1) state.data.agenda.items[0]=''; else state.data.agenda.items.splice(i,1); renderAgendaItems(); renderPaper(); }));
-}
-
-function renderParticipants() {
-  const list = document.getElementById('participantItems'); if (!list) return;
-  list.innerHTML = state.data.attendance.participants.map((p,i) => `<div class="repeat-row" style="grid-template-columns:34px 1fr 130px 32px"><div class="number">${i+1}</div><input data-person-name="${i}" value="${escapeHTML(p.name)}" placeholder="Participant name" /><input data-person-year="${i}" value="${escapeHTML(p.year)}" placeholder="Year / Semester" /><button class="remove-btn" type="button" data-remove-person="${i}" aria-label="Remove participant">×</button></div>`).join('');
-  list.querySelectorAll('[data-person-name]').forEach(input => input.addEventListener('input', e => { state.data.attendance.participants[Number(e.target.dataset.personName)].name=e.target.value; renderPaper(); }));
-  list.querySelectorAll('[data-person-year]').forEach(input => input.addEventListener('input', e => { state.data.attendance.participants[Number(e.target.dataset.personYear)].year=e.target.value; renderPaper(); }));
-  list.querySelectorAll('[data-remove-person]').forEach(button => button.addEventListener('click', e => { const i=Number(e.currentTarget.dataset.removePerson); if(state.data.attendance.participants.length===1) state.data.attendance.participants[0]={name:'',year:''}; else state.data.attendance.participants.splice(i,1); renderParticipants(); renderPaper(); }));
-}
-
+function formatDate(value){if(!value)return '__________________';const d=new Date(`${value}T00:00:00`);return d.toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'});}
+function templateFor(mode){const template=document.getElementById(`${mode}FormTemplate`);return template.content.cloneNode(true);}
+function addMarkdownToolbar(textarea){if(!textarea||textarea.dataset.markdownReady)return;textarea.dataset.markdownReady='1';const toolbar=document.createElement('div');toolbar.className='markdown-toolbar';toolbar.innerHTML='<button type="button" data-md="bold"><b>B</b></button><button type="button" data-md="italic"><i>I</i></button><button type="button" data-md="bullet">• List</button><button type="button" data-md="number">1. List</button><button type="button" data-md="quote">Quote</button><button type="button" data-md="heading">Heading</button>';textarea.parentNode.insertBefore(toolbar,textarea);toolbar.querySelectorAll('[data-md]').forEach(btn=>btn.addEventListener('click',()=>applyMarkdown(textarea,btn.dataset.md)));}
+function applyMarkdown(textarea,type){const start=textarea.selectionStart,end=textarea.selectionEnd;const selected=textarea.value.slice(start,end)||'text';const wrappers={bold:['**','**'],italic:['*','*'],bullet:['- ',''],number:['1. ',''],quote:['> ',''],heading:['### ','']};const [before,after]=wrappers[type];textarea.setRangeText(before+selected+after,start,end,'select');textarea.dispatchEvent(new Event('input',{bubbles:true}));textarea.focus();}
+function bindInputs(){formContent.querySelectorAll('input[name], textarea[name]').forEach(input=>{if(input.tagName==='TEXTAREA')addMarkdownToolbar(input);input.addEventListener('input',()=>{state.data[state.mode][input.name]=input.value;renderPaper();});});}
+function renderForm(){formContent.innerHTML='';formContent.appendChild(templateFor(state.mode));formTitle.textContent=titles[state.mode];if(state.mode==='agenda')renderAgendaItems();if(state.mode==='attendance')renderParticipants();const data=state.data[state.mode];formContent.querySelectorAll('input[name], textarea[name]').forEach(input=>{if(input.type==='date')input.value=data[input.name]||'';else if(input.name in data&&typeof data[input.name]==='string')input.value=data[input.name];});bindInputs();const addAgenda=document.getElementById('addAgenda');if(addAgenda)addAgenda.addEventListener('click',()=>{state.data.agenda.items.push('');renderAgendaItems();renderPaper();});const addParticipant=document.getElementById('addParticipant');if(addParticipant)addParticipant.addEventListener('click',()=>{state.data.attendance.participants.push({name:'',year:''});renderParticipants();renderPaper();});}
+function renderAgendaItems(){const list=document.getElementById('agendaItems');if(!list)return;list.innerHTML=state.data.agenda.items.map((item,i)=>`<div class="repeat-row"><div class="number">${i+1}</div><input data-agenda-index="${i}" value="${escapeHTML(item)}" placeholder="Agenda item ${i+1}"/><button class="remove-btn" type="button" data-remove-agenda="${i}" aria-label="Remove item">×</button></div>`).join('');list.querySelectorAll('[data-agenda-index]').forEach(input=>input.addEventListener('input',e=>{state.data.agenda.items[Number(e.target.dataset.agendaIndex)]=e.target.value;renderPaper();}));list.querySelectorAll('[data-remove-agenda]').forEach(button=>button.addEventListener('click',e=>{const i=Number(e.currentTarget.dataset.removeAgenda);if(state.data.agenda.items.length===1)state.data.agenda.items[0]='';else state.data.agenda.items.splice(i,1);renderAgendaItems();renderPaper();}));}
+function renderParticipants(){const list=document.getElementById('participantItems');if(!list)return;list.innerHTML=state.data.attendance.participants.map((p,i)=>`<div class="repeat-row participant-row"><div class="number">${i+1}</div><input data-person-name="${i}" value="${escapeHTML(p.name)}" placeholder="Participant name"/><input class="year-input" data-person-year="${i}" value="${escapeHTML(p.year)}" placeholder="Year / Semester"/><button class="remove-btn" type="button" data-remove-person="${i}" aria-label="Remove participant">×</button></div>`).join('');list.querySelectorAll('[data-person-name]').forEach(input=>input.addEventListener('input',e=>{state.data.attendance.participants[Number(e.target.dataset.personName)].name=e.target.value;renderPaper();}));list.querySelectorAll('[data-person-year]').forEach(input=>input.addEventListener('input',e=>{state.data.attendance.participants[Number(e.target.dataset.personYear)].year=e.target.value;renderPaper();}));list.querySelectorAll('[data-remove-person]').forEach(button=>button.addEventListener('click',e=>{const i=Number(e.currentTarget.dataset.removePerson);if(state.data.attendance.participants.length===1)state.data.attendance.participants[0]={name:'',year:''};else state.data.attendance.participants.splice(i,1);renderParticipants();renderPaper();}));}
 function paperHeader(){return `<header class="paper-header"><div class="paper-university">ALIAH UNIVERSITY</div><div class="paper-department">Department of English</div><div class="paper-campus">Park Circus Campus</div></header><section class="paper-club"><div class="paper-club-name">Fabulinus</div><div class="paper-club-sub">Drama Club · Department of English</div></section>`;}
 function signatures(){return `<div class="paper-signatures"><div class="paper-signature"><div class="line"></div><strong>HEAD OF THE DEPARTMENT</strong><small>Department of English</small></div><div class="paper-signature"><div class="line"></div><strong>SUPERVISOR</strong><small>Fabulinus · Drama Club</small></div></div>`;}
-
-function renderPaper(){
-  const d=state.data[state.mode];
-  let content=`${paperHeader()}<div class="paper-title">${paperTitles[state.mode]}</div>`;
-  if(state.mode==='notice') content+=`<div class="paper-meta"><span>Date: ${formatDate(d.date)}</span><span>Notice No.: ${escapeHTML(d.noticeNo)||'__________________'}</span></div><div class="paper-subject">Subject: ${escapeHTML(d.subject)||'____________________________________________'}</div><div class="paper-body">${markdown(d.body)}</div>`;
-  if(state.mode==='agenda') content+=`<div class="paper-meta"><span>Date: ${formatDate(d.date)}</span><span>Time: ${escapeHTML(d.time)||'__________________'}</span></div><div class="paper-meta"><span>Venue: ${escapeHTML(d.venue)||'__________________'}</span></div><div class="paper-section"><h3>Meeting / Event</h3><div class="paper-lines">${markdown(d.meeting)}</div></div><div class="paper-section"><h3>Agenda Items</h3><ol class="paper-list">${d.items.filter(x=>x.trim()).map(x=>`<li>${markdown(x)}</li>`).join('')||'<li></li><li></li><li></li>'}</ol></div>`;
-  if(state.mode==='minutes') content+=`<div class="paper-meta"><span>Date: ${formatDate(d.date)}</span><span>Time: ${escapeHTML(d.time)||'__________________'}</span></div><div class="paper-meta"><span>Venue: ${escapeHTML(d.venue)||'__________________'}</span></div><div class="paper-section"><h3>Meeting / Event</h3><div class="paper-lines">${markdown(d.meeting)}</div></div><div class="paper-section"><h3>Members Present</h3><div class="paper-lines">${markdown(d.members)}</div></div><div class="paper-section"><h3>Discussion</h3><div class="paper-lines">${markdown(d.discussion)}</div></div><div class="paper-section"><h3>Decisions / Resolutions</h3><div class="paper-lines">${markdown(d.decisions)}</div></div><div class="paper-section"><h3>Action Items</h3><div class="paper-lines">${markdown(d.actions)}</div></div>`;
-  if(state.mode==='attendance') content+=`<div class="paper-meta"><span>Date: ${formatDate(d.date)}</span><span>Time: ${escapeHTML(d.time)||'__________________'}</span></div><div class="paper-section"><h3>Meeting / Event</h3><div class="paper-lines">${markdown(d.meeting)}</div></div><table class="paper-table"><thead><tr><th>SL. NO.</th><th>NAME</th><th>YEAR / SEMESTER</th><th>SIGNATURE</th></tr></thead><tbody>${d.participants.map((p,i)=>`<tr><td>${i+1}</td><td>${escapeHTML(p.name)}</td><td>${escapeHTML(p.year)}</td><td></td></tr>`).join('')}</tbody></table>`;
-  paper.innerHTML=`${content}${signatures()}`;
-}
-
+function renderPaper(){const d=state.data[state.mode];let content=`${paperHeader()}<div class="paper-title">${paperTitles[state.mode]}</div>`;
+ if(state.mode==='notice')content+=`<div class="paper-meta"><span>Date: ${formatDate(d.date)}</span><span>Notice No.: ${escapeHTML(d.noticeNo)||'__________________'}</span></div><div class="paper-subject">Subject: ${escapeHTML(d.subject)||'____________________________________________'}</div><div class="paper-body">${markdown(d.body)}</div>`;
+ if(state.mode==='agenda')content+=`<div class="paper-meta"><span>Date: ${formatDate(d.date)}</span><span>Time: ${escapeHTML(d.time)||'__________________'}</span></div><div class="paper-meta"><span>Venue: ${escapeHTML(d.venue)||'__________________'}</span></div><div class="paper-section"><h3>Meeting / Event</h3><div class="paper-lines">${markdown(d.meeting)}</div></div><div class="paper-section"><h3>Agenda Items</h3><ol class="paper-list">${d.items.filter(x=>x.trim()).map(x=>`<li>${markdown(x)}</li>`).join('')||'<li></li><li></li><li></li>'}</ol></div>`;
+ if(state.mode==='minutes')content+=`<div class="paper-meta"><span>Date: ${formatDate(d.date)}</span><span>Time: ${escapeHTML(d.time)||'__________________'}</span></div><div class="paper-meta"><span>Venue: ${escapeHTML(d.venue)||'__________________'}</span></div><div class="paper-section"><h3>Meeting / Event</h3><div class="paper-lines">${markdown(d.meeting)}</div></div><div class="paper-section"><h3>Members Present</h3><div class="paper-lines">${markdown(d.members)}</div></div><div class="paper-section"><h3>Discussion</h3><div class="paper-lines">${markdown(d.discussion)}</div></div><div class="paper-section"><h3>Decisions / Resolutions</h3><div class="paper-lines">${markdown(d.decisions)}</div></div><div class="paper-section"><h3>Action Items</h3><div class="paper-lines">${markdown(d.actions)}</div></div>`;
+ if(state.mode==='attendance')content+=`<div class="paper-meta"><span>Date: ${formatDate(d.date)}</span><span>Time: ${escapeHTML(d.time)||'__________________'}</span></div><div class="paper-section"><h3>Meeting / Event</h3><div class="paper-lines">${markdown(d.meeting)}</div></div><table class="paper-table"><thead><tr><th>SL. NO.</th><th>NAME</th><th>YEAR / SEMESTER</th><th>SIGNATURE</th></tr></thead><tbody>${d.participants.map((p,i)=>`<tr><td>${i+1}</td><td>${escapeHTML(p.name)}</td><td>${escapeHTML(p.year)}</td><td></td></tr>`).join('')}</tbody></table>`;
+ paper.innerHTML=`${content}${signatures()}`;}
 function setMode(mode){state.mode=mode;document.querySelectorAll('.mode-card').forEach(btn=>btn.classList.toggle('active',btn.dataset.mode===mode));renderForm();renderPaper();}
 document.querySelectorAll('.mode-card').forEach(btn=>btn.addEventListener('click',()=>setMode(btn.dataset.mode)));
 document.getElementById('printBtn').addEventListener('click',()=>window.print());
 document.getElementById('resetBtn').addEventListener('click',()=>{if(!confirm('Clear all entered data?'))return;state.data={notice:{date:'',noticeNo:'',subject:'',body:''},agenda:{date:'',time:'',venue:'',meeting:'',items:['']},minutes:{date:'',time:'',venue:'',meeting:'',members:'',discussion:'',decisions:'',actions:''},attendance:{date:'',meeting:'',time:'',participants:[{name:'',year:''}]}};renderForm();renderPaper();});
-renderForm();
-renderPaper();
+renderForm();renderPaper();
